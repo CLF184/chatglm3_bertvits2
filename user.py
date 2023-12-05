@@ -464,7 +464,6 @@ def predict(input, chatbot, max_length, top_p, temperature, history, past_key_va
     else:
         if(language=="mix"):
             text="["+speaker+"]"+add_language_tags(text)
-            print(text)
         output=tts_fn(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,reference_audio,emotion)
     
         
