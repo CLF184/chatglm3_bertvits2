@@ -512,7 +512,7 @@ if __name__ == "__main__":
                 noise_scale = gr.Slider(minimum=0.1, maximum=2, value=0.6, step=0.1, label="Noise")
                 noise_scale_w = gr.Slider(minimum=0.1, maximum=2, value=0.8, step=0.1, label="Noise_W")
                 length_scale = gr.Slider(minimum=0.1, maximum=2, value=1.0, step=0.1, label="Length")
-                language = gr.Dropdown(choices=languages, value=languages[3], label="Language")
+                language = gr.Dropdown(choices=languages, value=languages[0], label="Language")
                 usingsplic=gr.Checkbox(label="切分生成    语言为mix时请不要勾选")
                 opt_cut_by_sent = gr.Checkbox(label="按句切分    在按段落切分的基础上再按句子切分文本")
                 interval_between_sent = gr.Slider(minimum=0,maximum=5,value=0.2,step=0.1,label="句间停顿(秒)，勾选按句切分才生效",)
