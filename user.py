@@ -460,11 +460,11 @@ def predict(input, chatbot, max_length, top_p, temperature, history, past_key_va
         chatbot[-1] = (parse_text(input), parse_text(response))
     text=parse_text(response)
     if(usingsplic):
-        output=tts_split(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,opt_cut_by_sent,interval_between_para,interval_between_sent,reference_audio,emotion)
-    else:
         if(language=="mix"):
             text="["+speaker+"]"+add_language_tags(text)
         output=tts_fn(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,reference_audio,emotion)
+    else:
+        output=tts_split(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,opt_cut_by_sent,interval_between_para,interval_between_sent,reference_audio,emotion)
     
         
     yield chatbot, history, past_key_values,output[1]
@@ -513,7 +513,7 @@ if __name__ == "__main__":
                 noise_scale_w = gr.Slider(minimum=0.1, maximum=2, value=0.8, step=0.1, label="Noise_W")
                 length_scale = gr.Slider(minimum=0.1, maximum=2, value=1.0, step=0.1, label="Length")
                 language = gr.Dropdown(choices=languages, value=languages[0], label="Language")
-                usingsplic=gr.Checkbox(label="切分生成    语言为mix时请不要勾选")
+                usingsplic=gr.Checkbox(label="不使用切分生成")
                 opt_cut_by_sent = gr.Checkbox(label="按句切分    在按段落切分的基础上再按句子切分文本")
                 interval_between_sent = gr.Slider(minimum=0,maximum=5,value=0.2,step=0.1,label="句间停顿(秒)，勾选按句切分才生效",)
                 interval_between_para = gr.Slider(minimum=0,maximum=10,value=1,step=0.1,label="段间停顿(秒)，需要大于句间停顿才有效",)
