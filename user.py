@@ -527,4 +527,4 @@ if __name__ == "__main__":
 
         emptyBtn.click(reset_state, outputs=[chatbot, history, past_key_values], show_progress=True)
 
-    demo.queue().launch(share=False, server_port=8501, inbrowser=True) #在这里修改demo的端口号
+    demo.queue().launch(share=config.webui_config.share, server_port=config.webui_config.port,inbrowser=True) #在这里修改demo的端口号
