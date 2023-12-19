@@ -248,7 +248,15 @@ def tts_fn(
     language,
     reference_audio,
     emotion,
+    prompt_mode,
 ):
+    if prompt_mode == "Audio prompt":
+        if reference_audio == None:
+            return ("Invalid audio prompt", None)
+        else:
+            reference_audio = load_audio(reference_audio)[1]
+    else:
+        reference_audio = None
     audio_list = []
     if language == "mix":
         bool_valid, str_valid = re_matching.validate_text(text)
@@ -389,6 +397,26 @@ def tts_fn(
     audio_concat = np.concatenate(audio_list)
     return "Success", (hps.data.sampling_rate, audio_concat)
 
+
+def load_audio(path):
+    audio, sr = librosa.load(path, 48000)
+    # audio = librosa.resample(audio, 44100, 48000)
+    return sr, audio
+
+
+def gr_util(item):
+    if item == "Text prompt":
+        return {"visible": True, "__type__": "update"}, {
+            "visible": False,
+            "__type__": "update",
+        }
+    else:
+        return {"visible": False, "__type__": "update"}, {
+            "visible": True,
+            "__type__": "update",
+        }
+
+
 """Override Chatbot.postprocess"""
 
 
@@ -448,8 +476,9 @@ def predict(input, chatbot, max_length, top_p, temperature, history, past_key_va
                 opt_cut_by_sent,
                 interval_between_para,
                 interval_between_sent,
-                reference_audio,
-                emotion,
+                audio_prompt,
+                text_prompt,
+                prompt_mode,
                 usingsplic):
     chatbot.append((parse_text(input), ""))
     for response, history, past_key_values in model_glm.stream_chat(tokenizer, input, history,
@@ -459,12 +488,34 @@ def predict(input, chatbot, max_length, top_p, temperature, history, past_key_va
                                                                 temperature=temperature):
         chatbot[-1] = (parse_text(input), parse_text(response))
     text=parse_text(response)
+    global hps
     if(usingsplic):
         if(language=="mix"):
             text="["+speaker+"]"+add_language_tags(text)
-        output=tts_fn(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,reference_audio,emotion)
+            print(text)
+        output=tts_fn(text,
+                speaker,
+                sdp_ratio,
+                noise_scale,
+                noise_scale_w,
+                length_scale,
+                language,
+                audio_prompt,
+                text_prompt,
+                prompt_mode)
     else:
-        output=tts_split(text,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,opt_cut_by_sent,interval_between_para,interval_between_sent,reference_audio,emotion)
+        output=tts_split(text,
+                speaker,
+                sdp_ratio,
+                noise_scale,
+                noise_scale_w,
+                length_scale,
+                language,
+                opt_cut_by_sent,
+                interval_between_para,
+                interval_between_sent,
+                audio_prompt,
+                text_prompt)
     
         
     yield chatbot, history, past_key_values,output[1]
@@ -507,24 +558,49 @@ if __name__ == "__main__":
             with gr.Column():
                 audio_output = gr.Audio(label="输出音频")
                 speaker = gr.Dropdown(choices=speakers, value=speakers[0], label="Speaker")
-                emotion = gr.Slider(minimum=0, maximum=9, value=0, step=1, label="Emotion")
                 sdp_ratio = gr.Slider(minimum=0, maximum=1, value=0.2, step=0.1, label="SDP Ratio")
                 noise_scale = gr.Slider(minimum=0.1, maximum=2, value=0.6, step=0.1, label="Noise")
                 noise_scale_w = gr.Slider(minimum=0.1, maximum=2, value=0.8, step=0.1, label="Noise_W")
                 length_scale = gr.Slider(minimum=0.1, maximum=2, value=1.0, step=0.1, label="Length")
                 language = gr.Dropdown(choices=languages, value=languages[0], label="Language")
+                _ = gr.Markdown(
+                    value="提示模式（Prompt mode）：可选文字提示或音频提示，用于生成文字或音频指定风格的声音。\n"
+                )
+                prompt_mode = gr.Radio(
+                    ["Text prompt", "Audio prompt"],
+                    label="Prompt Mode",
+                    value="Text prompt",
+                )
+                text_prompt = gr.Textbox(
+                    label="Text prompt",
+                    placeholder="用文字描述生成风格。如：Happy",
+                    value="Happy",
+                    visible=True,
+                )
+                audio_prompt = gr.Audio(
+                    label="Audio prompt", type="filepath", visible=False
+                )
                 usingsplic=gr.Checkbox(label="不使用切分生成")
                 opt_cut_by_sent = gr.Checkbox(label="按句切分    在按段落切分的基础上再按句子切分文本")
                 interval_between_sent = gr.Slider(minimum=0,maximum=5,value=0.2,step=0.1,label="句间停顿(秒)，勾选按句切分才生效",)
                 interval_between_para = gr.Slider(minimum=0,maximum=10,value=1,step=0.1,label="段间停顿(秒)，需要大于句间停顿才有效",)
-                reference_text = gr.Markdown(value="## 情感参考音频（WAV 格式）：用于生成语音的情感参考。")
-                reference_audio = gr.Audio(label="情感参考音频（WAV 格式）", type="filepath")
         history = gr.State([])
         past_key_values = gr.State(None)
-        submitBtn.click(predict, [user_input, chatbot, max_length, top_p, temperature, history, past_key_values,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,opt_cut_by_sent,interval_between_para,interval_between_sent,reference_audio,emotion,usingsplic],[chatbot, history, past_key_values,audio_output], show_progress=True)
+        submitBtn.click(predict, [user_input, chatbot, max_length, top_p, temperature, history, past_key_values,speaker,sdp_ratio,noise_scale,noise_scale_w,length_scale,language,opt_cut_by_sent,interval_between_para,interval_between_sent,audio_prompt,text_prompt,prompt_mode,usingsplic],[chatbot, history, past_key_values,audio_output], show_progress=True)
         
         submitBtn.click(reset_user_input, [], [user_input])
 
         emptyBtn.click(reset_state, outputs=[chatbot, history, past_key_values], show_progress=True)
+        prompt_mode.change(
+            lambda x: gr_util(x),
+            inputs=[prompt_mode],
+            outputs=[text_prompt, audio_prompt],
+        )
+
+        audio_prompt.upload(
+            lambda x: load_audio(x),
+            inputs=[audio_prompt],
+            outputs=[audio_prompt],
+        )
 
     demo.queue().launch(share=config.webui_config.share, server_port=config.webui_config.port,inbrowser=True) #在这里修改demo的端口号
